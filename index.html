@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="es">
+<head> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ColorLab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Configuración de la fuente Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Un gris claro para el fondo */
+            color: #1f2937; /* Color de texto por defecto (gris oscuro) */
+            transition: background-color 0.3s ease, color 0.3s ease; /* Transición suave */
+        }
+        /* Estilo para el modo oscuro */
+        body.dark-mode {
+            background-color: #1a202c; /* Fondo oscuro */
+            color: #e2e8f0; /* Texto claro */
+        }
+        /* Estilo personalizado para el input de tipo color para que sea mucho más grande y visible */
+        input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 120px; /* Ancho del selector de color AUMENTADO */
+            height: 120px; /* Alto del selector de color AUMENTADO */
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            border-radius: 9999px; /* Redondo completo */
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2); /* Sombra más notoria */
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, border 0.3s ease-in-out;
+            border: 2px solid transparent; /* Borde inicial transparente */
+        }
+        input[type="color"]:hover {
+            transform: scale(1.05); /* Ligeramente más grande al pasar el ratón */
+            box-shadow: 0 12px 20px rgba(0, 0, 0, 0.3); /* Sombra más intensa al pasar el ratón */
+            border-color: #007bff; /* Color de borde al pasar el ratón */
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 9999px; /* Asegura que la muestra sea redonda */
+        }
+        input[type="color"]::-moz-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-moz-color-swatch {
+            border: none;
+            border-radius: 9999px; /* Asegura que la muestra sea redonda */
+        }
+
+        /* Clase para animar la entrada y salida de mensajes temporales */
+        .fade-in-out {
+            animation: fadeInOut 2.5s forwards; /* Duración total de la animación */
+        }
+
+        /* Keyframes para la animación de entrada y salida */
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(10px); } /* Empieza invisible y ligeramente abajo */
+            20% { opacity: 1; transform: translateY(0); } /* Se vuelve visible y sube a su posición */
+            80% { opacity: 1; transform: translateY(0); } /* Se mantiene visible */
+            100% { opacity: 0; transform: translateY(-10px); } /* Se desvanece y sube ligeramente */
+        }
+
+        /* Estilo para las tarjetas de color guardado con animaciones */
+        .saved-color-card {
+            transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+        }
+        .saved-color-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        /* Estilo para animar la eliminación de tarjetas de color guardado */
+        .saved-color-card.removing {
+            opacity: 0;
+            transform: translateX(100%); /* Se desliza hacia la derecha */
+            transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+        }
+
+        /* Estilo para las tarjetas de paletas predefinidas para hacerlas clicables */
+        .premade-palette-card {
+            cursor: default; /* El cursor de la tarjeta padre no es de puntero */
+        }
+        .premade-palette-card:hover {
+            transform: none; /* Deshacer la transformación de hover en la tarjeta padre */
+            box-shadow: none; /* Deshacer la sombra de hover en la tarjeta padre */
+        }
+        .palette-swatch-item { /* Estilo para los cuadritos de color individuales de la paleta */
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .palette-swatch-item:hover {
+            transform: scale(1.15); /* Animación más notoria al pasar el cursor */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Clase para animar el "pop" al hacer clic en muestras de color */
+        .palette-swatch-item.clicked, .color-card-item.clicked, .recent-color-swatch.clicked, .grid-color-swatch.clicked {
+            animation: popAndFade 0.3s ease-out;
+        }
+
+        @keyframes popAndFade {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Animación para los botones de copiar/guardar/eliminar */
+        .bg-blue-600, .bg-green-600, .bg-purple-500, .bg-red-500 {
+            transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .bg-blue-600:hover, .bg-green-600:hover, .bg-purple-500:hover, .bg-red-500:hover {
+            transform: scale(1.08) translateY(-2px); /* Un poco más de elevación */
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.25); /* Sombra más pronunciada */
+        }
+
+        /* Estilo para las tarjetas de esquemas de color para un hover animado */
+        .color-card-item {
+            transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+        }
+        .color-card-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        /* Estilo para los elementos del historial de colores */
+        .recent-color-swatch {
+            cursor: pointer;
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .recent-color-swatch:hover {
+            transform: scale(1.15);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        /* Estilo para los elementos de la tabla de colores (color grid) */
+        .grid-color-swatch {
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+            width: 20px; /* Set to 20px for consistency with JS grid-template-columns */
+            height: 20px; /* Set to 20px for consistency with JS grid-template-columns */
+        }
+        .grid-color-swatch:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Estilos específicos para el modo oscuro en los contenedores */
+        body.dark-mode .max-w-4xl.mx-auto,
+        body.dark-mode .bg-white,
+        body.dark-mode .bg-blue-50,
+        body.dark-mode .bg-yellow-50,
+        body.dark-mode .bg-purple-50,
+        body.dark-mode .bg-gray-50,
+        body.dark-mode .bg-teal-50,
+        body.dark-mode .bg-gray-100 {
+            background-color: #2d3748; /* Fondo más oscuro para tarjetas y secciones */
+            color: #e2e8f0; /* Texto claro */
+        }
+
+        body.dark-mode .text-gray-800,
+        body.dark-mode .text-gray-700,
+        body.dark-mode .text-gray-600,
+        body.dark-mode .text-gray-500 {
+            color: #e2e8f0; /* Asegurar que el texto sea claro en modo oscuro */
+        }
+
+        body.dark-mode .color-card-item,
+        body.dark-mode .premade-palette-card,
+        body.dark-mode .saved-color-card {
+            background-color: #4a5568; /* Fondo para elementos interactivos en modo oscuro */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); /* Sombra más pronunciada para contraste */
+        }
+        
+        body.dark-mode .color-card-item:hover,
+        body.dark-mode .premade-palette-card:hover,
+        body.dark-mode .saved-color-card:hover {
+            background-color: #5a6b82; /* Un poco más claro al pasar el ratón */
+        }
+
+        body.dark-mode .shadow-inner {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6); /* Sombra interna más oscura */
+        }
+        
+        body.dark-mode .border-purple-200 {
+            border-color: #6b46c1; /* Ajustar color de borde para modo oscuro */
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+    <audio id="clickSound" src="click.mp3" preload="auto"></audio>
+    <audio id="successSound" src="success.mp3" preload="auto"></audio>
+    <audio id="deleteSound" src="delete.mp3" preload="auto"></audio>
+
+    <div class="relative max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-2xl"> <button id="darkModeToggle" class="absolute top-4 right-4 bg-gray-200 text-gray-800 px-4 py-2 rounded-full shadow-md hover:bg-gray-300 transition-colors duration-300">
+            Modo Oscuro
+        </button>
+
+        <h1 class="text-3xl sm:text-4xl font-bold text-center mb-8 text-gray-800">
+            ColorLab
+        </h1>
+
+        <div class="mb-10 p-6 bg-blue-50 rounded-lg shadow-xl flex flex-col md:flex-row items-center justify-center space-y-6 md:space-y-0 md:space-x-8">
+            <div class="flex flex-col items-center">
+                <label for="colorPicker" class="text-gray-700 text-lg font-medium mb-2">Selecciona un Color:</label>
+                <input type="color" id="colorPicker" value="#007bff">
+            </div>
+            <div class="text-center md:text-left">
+                <div id="currentColorPreview" class="w-48 h-24 mx-auto md:mx-0 mb-4 shadow-inner" style="background-color: #007bff;"></div>
+                <p class="text-gray-800 text-xl font-semibold mb-2">Color Actual:</p>
+                <p id="hexCode" class="text-gray-700 font-mono text-base">HEX: #007BFF</p>
+                <p id="rgbCode" class="text-gray-700 font-mono text-base">RGB: rgb(0, 123, 255)</p>
+                <div class="flex justify-center md:justify-start space-x-3 mt-4">
+                    <button id="copyHexBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 hover:-translate-y-1">
+                        Copiar HEX
+                    </button>
+                    <button id="copyRgbBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 hover:-translate-y-1">
+                        Copiar RGB
+                    </button>
+                    <button id="saveColorBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out transform hover:scale-105 hover:-translate-y-1">
+                        Guardar Color
+                    </button>
+                </div>
+                <div id="copyMessage" class="text-green-700 text-sm mt-3 font-medium opacity-0"></div>
+            </div>
+        </div>
+
+        <div class="mb-10 p-6 bg-yellow-50 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Historial de Colores Recientes</h2>
+            <div id="recentColorsContainer" class="flex flex-wrap justify-center gap-3">
+                </div>
+            <p id="noRecentColorsMessage" class="text-center text-gray-500 mt-4 hidden">Aún no hay colores en el historial.</p>
+        </div>
+
+        <div class="mb-10 p-6 bg-purple-50 rounded-lg shadow-xl"> <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Esquemas de Color</h2>
+            <div id="mainColorSchemesContainer" class="flex flex-wrap justify-center gap-4 mb-8">
+                </div>
+
+            <h3 class="text-xl font-bold text-center mb-4 text-gray-700 border-t pt-6 border-purple-200">Tonos y Opacidades</h3>
+            <div id="tonesAndOpacitiesContainer" class="flex flex-col gap-8">
+                </div>
+        </div>
+
+        <div id="gradientSection" class="mb-10 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg shadow-xl text-center">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Degradado del Color Actual</h2>
+            <div id="gradientDisplay" class="w-full h-32 rounded-lg shadow-inner transition-all duration-500 ease-in-out" style="background: linear-gradient(to right, #007bff, #FF8400);"></div>
+            <p id="gradientInfo" class="text-gray-600 text-sm mt-4"></p>
+        </div>
+
+        <div class="mb-10 p-6 bg-gray-50 rounded-lg shadow-xl"> <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Mis Colores Guardados</h2>
+            <div id="savedColorsList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                </div>
+            <p id="noSavedColorsMessage" class="text-center text-gray-500 mt-4 hidden">Aún no has guardado ningún color.</p>
+        </div>
+
+        <div class="mb-10 p-6 bg-teal-50 rounded-lg shadow-xl"> <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Paletas de Colores Hechas</h2>
+            <div id="premadePalettesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                </div>
+        </div>
+
+        <div class="p-6 bg-gray-100 rounded-lg shadow-xl">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Tabla de Colores General</h2>
+            <div class="flex justify-center"> 
+                <div id="colorGridContainer" class="grid gap-0.5">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const colorPicker = document.getElementById('colorPicker');
+        const currentColorPreview = document.getElementById('currentColorPreview');
+        const colorNameElem = document.getElementById('colorName');
+        const hexCodeElem = document.getElementById('hexCode');
+        const rgbCodeElem = document.getElementById('rgbCode');
+        const copyHexBtn = document.getElementById('copyHexBtn');
+        const copyRgbBtn = document.getElementById('copyRgbBtn');
+        const saveColorBtn = document.getElementById('saveColorBtn');
+        const copyMessageElem = document.getElementById('copyMessage');
+        const savedColorsList = document.getElementById('savedColorsList');
+        const noSavedColorsMessage = document.getElementById('noSavedColorsMessage');
+        const mainColorSchemesContainer = document.getElementById('mainColorSchemesContainer');
+        const tonesAndOpacitiesContainer = document.getElementById('tonesAndOpacitiesContainer');
+        const premadePalettesContainer = document.getElementById('premadePalettesContainer');
+        const gradientDisplay = document.getElementById('gradientDisplay');
+        const gradientInfo = document.getElementById('gradientInfo');
+        const recentColorsContainer = document.getElementById('recentColorsContainer');
+        const noRecentColorsMessage = document.getElementById('noRecentColorsMessage');
+        const colorGridContainer = document.getElementById('colorGridContainer');
+        const darkModeToggle = document.getElementById('darkModeToggle'); // Nuevo botón de modo oscuro
+
+        // Audio elements
+        const clickSound = document.getElementById('clickSound');
+        const successSound = document.getElementById('successSound');
+        const deleteSound = document.getElementById('deleteSound');
+
+        // Stores saved colors in local storage
+        let savedColors = JSON.parse(localStorage.getItem('savedColors')) || [];
+        // Stores recent colors in local storage, limited to RECENT_COLORS_LIMIT
+        let recentColors = JSON.parse(localStorage.getItem('recentColors')) || [];
+        const RECENT_COLORS_LIMIT = 15; // Limit the number of recent colors
+
+        // --- Color Conversion Functions ---
+
+        /**
+         * Converts a hexadecimal value to RGB.
+         * @param {string} hex - The HEX color code (e.g., "#RRGGBB" or "RRGGBB").
+         * @returns {object} An object with r, g, b properties.
+         */
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        /**
+         * Converts an RGB value to hexadecimal.
+         * @param {number} r - Red value (0-255).
+         * @param {number} g - Green value (0-255).
+         * @param {number} b - Blue value (0-255).
+         * @returns {string} The HEX color code (e.g., "#RRGGBB").
+         */
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+        }
+
+        /**
+         * Converts an RGB color to HSL.
+         * Required for calculating complementary colors.
+         * @param {number} r - Red value (0-255).
+         * @param {number} g - Green value (0-255).
+         * @param {number} b - Blue value (0-255).
+         * @returns {object} An object with h, s, l properties (0-1).
+         */
+        function rgbToHsl(r, g, b) {
+            r /= 255;
+            g /= 255;
+            b /= 255;
+
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max === min) {
+                h = s = 0; // achromatic
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r:
+                        h = (g - b) / d + (g < b ? 6 : 0);
+                        break;
+                    case g:
+                        h = (b - r) / d + 2;
+                        break;
+                    case b:
+                        h = (r - g) / d + 4;
+                        break;
+                }
+                h /= 6;
+            }
+            return { h: h, s: s, l: l };
+        }
+
+        /**
+         * Converts HSL to RGB.
+         * Required for calculating complementary colors.
+         * @param {number} h - Hue (0-1).
+         * @param {number} s - Saturation (0-1).
+         * @param {number} l - Lightness (0-1).
+         * @returns {object} An object with r, g, b properties (0-255).
+         */
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+
+            if (s === 0) {
+                r = g = b = l; // achromatic
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                };
+
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+
+            return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+        }
+
+        /**
+         * Creates a color display card for various color schemes/variations.
+         * @param {string} colorValue - The color value (HEX or RGBA).
+         * @param {string} label - The label for the color (e.g., "Complementario", "Opuesto", "Claro", "Oscuro").
+         * @param {boolean} isCircleSwatch - If true, the color swatch is a circle (rounded-full). If false, it's a rounded square (rounded-xl).
+         * @returns {string} HTML string for the color card.
+         */
+        function createColorCard(colorValue, label, isCircleSwatch = true) {
+            const swatchRoundedClass = isCircleSwatch ? 'rounded-full' : ''; 
+            const shadowClass = 'shadow-md'; 
+            const displayColorValue = colorValue.startsWith('#') ? colorValue.toUpperCase() : colorValue;
+            // Reducido el tamaño de las tarjetas de esquema de color y sus swatches
+            return `
+                <div class="color-card-item flex flex-col items-center p-2 bg-gray-100 rounded-lg ${shadowClass} w-24 h-24 justify-center transition duration-300 transform hover:scale-105" data-color-value="${displayColorValue}">
+                    <div class="w-12 h-12 ${swatchRoundedClass} mb-1 shadow-inner" style="background-color: ${colorValue};" title="${displayColorValue}"></div>
+                    <p class="font-semibold text-gray-700 text-xs text-center">${label}</p>
+                    <p class="text-xs text-gray-600 text-center">${displayColorValue}</p>
+                </div>
+            `;
+        }
+
+        // --- Main Application Logic ---
+
+        /**
+         * Updates the user interface with the selected color's information.
+         * @param {string} hex - The current HEX color code.
+         */
+        function updateColorInfo(hex) {
+            const rgb = hexToRgb(hex);
+            if (rgb) {
+                if (currentColorPreview) {
+                    currentColorPreview.style.backgroundColor = hex;
+                }
+                if (hexCodeElem) {
+                    hexCodeElem.textContent = `HEX: ${hex.toUpperCase()}`;
+                }
+                if (rgbCodeElem) {
+                    rgbCodeElem.textContent = `RGB: rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+                }
+                if (colorNameElem) { 
+                    colorNameElem.textContent = hex.toUpperCase(); // Use HEX as "name"
+                }
+                updateAllColorSchemes(hex); // Call combined update function
+                // addRecentColor(hex); // Moved to 'change' event listener
+            }
+        }
+
+        /**
+         * Calculates and displays various color schemes: Original, Complementary, Analogous, Triadic,
+         * and also tones (lighter/darker) and opacities for key colors.
+         * @param {string} hex - The HEX color code.
+         */
+        function updateAllColorSchemes(hex) {
+            const rgb = hexToRgb(hex);
+            if (!rgb) return;
+
+            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+            let mainSchemesHtml = '';
+            let tonesAndOpacitiesHtmlOriginal = '';
+            let tonesAndOpacitiesHtmlOpposite = '';
+
+            // Directo Opuesto (180 grados) - calculate it early
+            const compHsl = { h: (hsl.h + 0.5) % 1, s: hsl.s, l: hsl.l };
+            const compRgb = hslToRgb(compHsl.h, compHsl.s, compHsl.l);
+            const compHex = rgbToHex(compRgb.r, compRgb.g, compRgb.b);
+
+            // --- Esquemas de Color Principales ---
+
+            // Original color (como rectángulo sin redondeado)
+            mainSchemesHtml += createColorCard(hex, 'Original', false);
+
+            // Directo Opuesto (180 grados)
+            mainSchemesHtml += createColorCard(compHex, 'Opuesto', false); // Etiquetado como 'Opuesto'
+
+            // Colores Análogos (+/- 30 grados del original)
+            const analo1Hsl = { h: (hsl.h + 0.0833) % 1, s: hsl.s, l: hsl.l }; // +30 grados (30/360 = 0.0833)
+            const analo2Hsl = { h: (hsl.h - 0.0833 + 1) % 1, s: hsl.s, l: hsl.l }; // -30 grados
+            const analo1Rgb = hslToRgb(analo1Hsl.h, analo1Hsl.s, analo1Hsl.l);
+            const analo2Rgb = hslToRgb(analo2Hsl.h, analo2Hsl.s, analo2Hsl.l);
+            mainSchemesHtml += createColorCard(rgbToHex(analo1Rgb.r, analo1Rgb.g, analo1Rgb.b), 'Análogo 1', true); 
+            mainSchemesHtml += createColorCard(rgbToHex(analo2Rgb.r, analo2Rgb.g, analo2Rgb.b), 'Análogo 2', true); 
+
+            // Colores Triádicos (+/- 120 grados del original)
+            const triadic1Hsl = { h: (hsl.h + 1/3) % 1, s: hsl.s, l: hsl.l }; // +120 grados
+            const triadic2Hsl = { h: (hsl.h + 2/3) % 1, s: hsl.s, l: hsl.l }; // +240 grados
+            const triadic1Rgb = hslToRgb(triadic1Hsl.h, triadic1Hsl.s, triadic1Hsl.l);
+            const triadic2Rgb = hslToRgb(triadic2Hsl.h, triadic2Hsl.s, triadic2Hsl.l);
+            mainSchemesHtml += createColorCard(rgbToHex(triadic1Rgb.r, triadic1Rgb.g, triadic1Rgb.b), 'Triádico 1', true); 
+            mainSchemesHtml += createColorCard(rgbToHex(triadic2Rgb.r, triadic2Rgb.g, triadic2Rgb.b), 'Triádico 2', true); 
+
+            if (mainColorSchemesContainer) { // Added null check
+                mainColorSchemesContainer.innerHTML = mainSchemesHtml;
+            }
+
+
+            // --- Tonos y Opacidades para el Color Original y Opuesto ---
+
+            // Tonos del Color Original (all will be circles by default due to createColorCard's default)
+            const originalLighterHsl = { h: hsl.h, s: hsl.s, l: Math.min(1, hsl.l + 0.25) }; // Más claro
+            const originalDarkerHsl = { h: hsl.h, s: hsl.s, l: Math.max(0, hsl.l - 0.25) }; // Más oscuro
+            const originalLighterRgb = hslToRgb(originalLighterHsl.h, originalLighterHsl.s, originalLighterHsl.l);
+            const originalDarkerRgb = hslToRgb(originalDarkerHsl.h, originalDarkerHsl.s, originalDarkerHsl.l);
+
+            tonesAndOpacitiesHtmlOriginal += createColorCard(rgbToHex(originalLighterRgb.r, originalLighterRgb.g, originalLighterRgb.b), 'Claro', true); 
+            tonesAndOpacitiesHtmlOriginal += createColorCard(hex, 'Base', true); 
+            tonesAndOpacitiesHtmlOriginal += createColorCard(rgbToHex(originalDarkerRgb.r, originalDarkerRgb.g, originalDarkerRgb.b), 'Oscuro', true); 
+            tonesAndOpacitiesHtmlOriginal += createColorCard(`rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`, '10% Opacidad', true); // Changed to 10% opacity
+
+            // Tonos del Color Opuesto
+            const oppositeLighterHsl = { h: compHsl.h, s: compHsl.s, l: Math.min(1, compHsl.l + 0.25) }; // Más claro
+            const oppositeDarkerHsl = { h: compHsl.h, s: compHsl.s, l: Math.max(0, compHsl.l - 0.25) }; // Más oscuro
+            const oppositeLighterRgb = hslToRgb(oppositeLighterHsl.h, oppositeLighterHsl.s, oppositeLighterHsl.l);
+            const oppositeDarkerRgb = hslToRgb(oppositeDarkerHsl.h, oppositeDarkerHsl.s, oppositeDarkerHsl.l);
+
+            tonesAndOpacitiesHtmlOpposite += createColorCard(rgbToHex(oppositeLighterRgb.r, oppositeLighterRgb.g, oppositeLighterRgb.b), 'Claro', true); 
+            tonesAndOpacitiesHtmlOpposite += createColorCard(compHex, 'Base', true); 
+            tonesAndOpacitiesHtmlOpposite += createColorCard(rgbToHex(oppositeDarkerRgb.r, oppositeDarkerRgb.g, oppositeDarkerRgb.b), 'Oscuro', true); 
+            tonesAndOpacitiesHtmlOpposite += createColorCard(`rgba(${compRgb.r}, ${compRgb.g}, ${compRgb.b}, 0.1)`, '10% Opacidad', true); // Changed to 10% opacity
+
+
+            if (tonesAndOpacitiesContainer) { // Added null check
+                tonesAndOpacitiesContainer.innerHTML = `
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-700 text-center mb-3">Variaciones del Color Original</h4>
+                        <div class="flex flex-wrap justify-center gap-4">
+                            ${tonesAndOpacitiesHtmlOriginal}
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-700 text-center mb-3">Variaciones del Color Opuesto</h4>
+                        <div class="flex flex-wrap justify-center gap-4">
+                            ${tonesAndOpacitiesHtmlOpposite}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Update gradient display here
+            updateGradientDisplay(hex, compHex);
+        }
+
+
+        /**
+         * Updates the gradient display based on the current and opposite color.
+         * @param {string} currentHex - The HEX of the current color.
+         * @param {string} oppositeHex - The HEX of the opposite color.
+         */
+        function updateGradientDisplay(currentHex, oppositeHex) {
+            if (gradientDisplay) { // Added null check
+                gradientDisplay.style.background = `linear-gradient(to right, ${currentHex}, ${oppositeHex})`;
+            }
+            if (gradientInfo) { // Added null check
+                gradientInfo.textContent = `Degradado de ${currentHex.toUpperCase()} a ${oppositeHex.toUpperCase()}`;
+            }
+        }
+
+        /**
+         * Copies text to clipboard and displays a message.
+         * @param {string} text - The text to copy.
+         */
+        function copyToClipboard(text) {
+            // Use a temporary element to copy text
+            const tempInput = document.createElement('textarea');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showTemporaryMessage(`¡"${text}" copiado!`);
+            clickSound.play(); // Play click sound on copy
+        }
+
+        /**
+         * Displays a temporary message in the copyMessage area.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success' or 'error'.
+         */
+        function showTemporaryMessage(message, type = 'success') {
+            if (!copyMessageElem) return; // Added null check
+
+            copyMessageElem.textContent = message;
+            // Remueve la clase de animación si ya existe y fuerza un reflow
+            copyMessageElem.classList.remove('opacity-0', 'text-green-700', 'text-red-700', 'fade-in-out'); 
+            copyMessageElem.classList.add('opacity-100'); 
+
+            if (type === 'error') {
+                copyMessageElem.classList.add('text-red-700');
+            } else {
+                copyMessageElem.classList.add('text-green-700');
+            }
+
+            // Fuerza un reflow para asegurar que la animación se reinicie si se llama rápidamente
+            void copyMessageElem.offsetWidth;
+            copyMessageElem.classList.add('fade-in-out'); // Añade la clase de animación
+
+            // La animación se maneja con keyframes, no necesitamos un setTimeout para la opacidad
+            setTimeout(() => {
+                copyMessageElem.classList.remove('text-green-700', 'text-red-700'); 
+            }, 2500); // Coincide con la duración de la animación
+        }
+
+
+        /**
+         * Renders a saved color to the list.
+         * @param {object} color - Color object with id, hex, and rgb.
+         */
+        function renderSavedColor(color) {
+            const colorCard = document.createElement('div');
+            colorCard.id = `saved-color-${color.id}`;
+            colorCard.classList.add('bg-white', 'p-4', 'rounded-lg', 'shadow-md', 'flex', 'flex-col', 'items-center', 'space-y-2', 'saved-color-card'); 
+            colorCard.innerHTML = `
+                <div class="w-20 h-20 rounded-xl shadow-inner" style="background-color: ${color.hex};"></div> <p class="font-semibold text-gray-800">${color.hex.toUpperCase()}</p>
+                <p class="text-sm text-gray-600">${color.rgb}</p>
+                <div class="flex space-x-2 mt-2">
+                    <button class="copy-saved-btn bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-1 px-2 rounded-full transition duration-300 transform hover:scale-110" data-hex="${color.hex}">Copiar</button>
+                    <button class="download-saved-btn bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold py-1 px-2 rounded-full transition duration-300 transform hover:scale-110" data-hex="${color.hex}" data-rgb="${color.rgb}">Descargar</button>
+                    <button class="delete-saved-btn bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-2 rounded-full transition duration-300 transform hover:scale-110" data-id="${color.id}">Eliminar</button>
+                </div>
+            `;
+            if (savedColorsList) { // Added null check
+                savedColorsList.appendChild(colorCard);
+            }
+        }
+
+        /**
+         * Updates the list of saved colors in the UI and localStorage.
+         */
+        function updateSavedColorsList() {
+            if (savedColorsList) { // Added null check
+                savedColorsList.innerHTML = ''; 
+            }
+            if (savedColors.length === 0) {
+                if (noSavedColorsMessage) { // Added null check
+                    noSavedColorsMessage.classList.remove('hidden');
+                }
+            } else {
+                if (noSavedColorsMessage) { // Added null check
+                    noSavedColorsMessage.classList.add('hidden');
+                }
+                savedColors.forEach(color => renderSavedColor(color));
+            }
+            localStorage.setItem('savedColors', JSON.stringify(savedColors));
+        }
+
+        /**
+         * Downloads a color image.
+         * @param {string} hex - The HEX code of the color.
+         * @param {string} rgb - The RGB code of the color (for the file name).
+         */
+        function downloadColorImage(hex, rgb) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = hex;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const link = document.createElement('a');
+            const fileName = `color_${hex.replace('#', '')}.png`;
+            link.download = fileName;
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            successSound.play(); // Play success sound on download
+        }
+
+        // --- Predefined Palettes Data and Rendering ---
+
+        const premadePalettes = [
+            {
+                name: "Paleta Calma",
+                colors: ["#A8DADC", "#457B9D", "#1D3557", "#F1FAEE"]
+            },
+            {
+                name: "Atardecer Vibrante",
+                colors: ["#FFC300", "#FF5733", "#C70039", "#900C3F"]
+            },
+            {
+                name: "Bosque Sereno",
+                colors: ["#6A994E", "#A7C957", "#315C2B", "#C0B7B1"]
+            },
+            {
+                name: "Gris Urbano",
+                colors: ["#F2F2F2", "#BFBFBF", "#8C8C8C", "#595959"]
+            }
+        ];
+
+        /**
+         * Renders a predefined palette.
+         * @param {object} palette - Palette object with name and colors.
+         */
+        function renderPalette(palette) {
+            const paletteCard = document.createElement('div');
+            paletteCard.classList.add('bg-white', 'p-4', 'rounded-lg', 'shadow-md', 'transition', 'duration-300', 'transform', 'hover:scale-102', 'hover:shadow-lg', 'premade-palette-card');
+            paletteCard.innerHTML = `
+                <h3 class="font-bold text-lg mb-3 text-gray-800">${palette.name}</h3>
+                <div class="flex space-x-2">
+                    ${palette.colors.map(color => `
+                        <div class="w-10 h-10 rounded-lg shadow-inner palette-swatch-item" style="background-color: ${color};" title="${color.toUpperCase()}" data-color-value="${color}"></div> `).join('')}
+                </div>
+            `;
+            if (premadePalettesContainer) { // Added null check
+                premadePalettesContainer.appendChild(paletteCard);
+            }
+        }
+
+        // --- Recent Colors History Logic ---
+        /**
+         * Adds a color to the recent colors history.
+         * @param {string} hexColor - The HEX color to add.
+         */
+        function addRecentColor(hexColor) {
+            // Remove if already exists to move it to the front
+            recentColors = recentColors.filter(color => color.toUpperCase() !== hexColor.toUpperCase());
+            // Add to the front
+            recentColors.unshift(hexColor);
+            // Limit the array size
+            if (recentColors.length > RECENT_COLORS_LIMIT) {
+                recentColors = recentColors.slice(0, RECENT_COLORS_LIMIT);
+            }
+            updateRecentColorsList();
+            localStorage.setItem('recentColors', JSON.stringify(recentColors));
+        }
+
+        /**
+         * Updates the display of recent colors.
+         */
+        function updateRecentColorsList() {
+            if (recentColorsContainer) { // Added null check
+                recentColorsContainer.innerHTML = '';
+            }
+            if (recentColors.length === 0) {
+                if (noRecentColorsMessage) { // Added null check
+                    noRecentColorsMessage.classList.remove('hidden');
+                }
+            } else {
+                if (noRecentColorsMessage) { // Added null check
+                    noRecentColorsMessage.classList.add('hidden');
+                }
+                recentColors.forEach(color => {
+                    const swatch = document.createElement('div');
+                    swatch.classList.add('w-8', 'h-8', 'rounded-full', 'shadow-md', 'recent-color-swatch'); // REDUCIDO el tamaño del swatch de colores recientes
+                    swatch.style.backgroundColor = color;
+                    swatch.title = color.toUpperCase();
+                    swatch.dataset.colorValue = color;
+                    if (recentColorsContainer) { // Added null check
+                        recentColorsContainer.appendChild(swatch);
+                    }
+                });
+            }
+        }
+
+        // --- Color Grid Logic ---
+        /**
+         * Generates and renders a comprehensive color grid.
+         */
+        function generateColorGrid() {
+            if (!colorGridContainer) return;
+
+            colorGridContainer.innerHTML = ''; // Clear previous grid
+
+            const colorfulHueSteps = 12; // Number of hues for colorful part (columns)
+            const colorfulLightnessSteps = 8; // Number of lightness steps (rows)
+            const grayscaleCols = 5; // Number of columns for grayscale
+
+            // Set grid-template-columns dynamically. Each swatch is 20px wide.
+            // This defines the structure: 12 columns for colors, then 5 columns for grayscale.
+            colorGridContainer.style.gridTemplateColumns = `repeat(${colorfulHueSteps}, 20px) repeat(${grayscaleCols}, 20px)`;
+
+
+            for (let row = 0; row < colorfulLightnessSteps; row++) {
+                // Generate Colorful Swatches for the current row
+                for (let i = 0; i < colorfulHueSteps; i++) {
+                    const hue = i / colorfulHueSteps; // Hue from 0 to 1
+                    // Lightness from 0.9 (lightest top) to 0.1 (darkest bottom).
+                    const lightness = 0.9 - (row / (colorfulLightnessSteps - 1)) * 0.8; 
+                    const saturation = 1; // Full saturation
+
+                    const rgb = hslToRgb(hue, saturation, lightness);
+                    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+
+                    const swatch = document.createElement('div');
+                    swatch.classList.add('grid-color-swatch'); // CSS sets width/height
+                    swatch.style.backgroundColor = hex;
+                    swatch.title = hex.toUpperCase();
+                    swatch.dataset.colorValue = hex;
+                    colorGridContainer.appendChild(swatch);
+                }
+
+                // Generate Grayscale Swatches for the current row, aligned with colorful section
+                for (let k = 0; k < grayscaleCols; k++) {
+                    // Determine a base lightness for the current grayscale column (k)
+                    // 0.9 for the leftmost grayscale column, decreasing to 0.1 for the rightmost.
+                    const columnBaseLightness = 0.9 - (k / (grayscaleCols - 1)) * 0.8;
+
+                    // Vary lightness within the column from top to bottom, similar to colorful section.
+                    // This multiplier ensures that top of the grayscale columns are lighter.
+                    const verticalLightnessAdjust = (row / (colorfulLightnessSteps - 1)) * 0.3; // Adjust range for vertical gradient
+
+                    const finalLightness = Math.max(0, Math.min(1, columnBaseLightness - verticalLightnessAdjust));
+
+                    const rgb = hslToRgb(0, 0, finalLightness); // Hue and saturation are 0 for grayscale
+                    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
+
+                    const swatch = document.createElement('div');
+                    swatch.classList.add('grid-color-swatch'); // CSS sets width/height
+                    swatch.style.backgroundColor = hex;
+                    swatch.title = hex.toUpperCase();
+                    swatch.dataset.colorValue = hex;
+                    colorGridContainer.appendChild(swatch);
+                }
+            }
+        }
+
+        // --- Dark Mode Logic ---
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+
+            if (darkModeToggle) {
+                darkModeToggle.textContent = isDarkMode ? 'Modo Claro' : 'Modo Oscuro';
+                if (isDarkMode) {
+                    darkModeToggle.classList.remove('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                    darkModeToggle.classList.add('bg-gray-700', 'text-white', 'hover:bg-gray-600');
+                } else {
+                    darkModeToggle.classList.remove('bg-gray-700', 'text-white', 'hover:bg-gray-600');
+                    darkModeToggle.classList.add('bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                }
+            }
+            // Cambiar fondo del degradado dinámicamente
+            const gradientSection = document.getElementById('gradientSection');
+            if (gradientSection) {
+                if (isDarkMode) {
+                    gradientSection.classList.remove('from-blue-50', 'to-purple-50');
+                    gradientSection.classList.add('from-gray-700', 'to-gray-900');
+                } else {
+                    gradientSection.classList.remove('from-gray-700', 'to-gray-900');
+                    gradientSection.classList.add('from-blue-50', 'to-purple-50');
+                }
+            }
+        }
+
+        // --- Event Listeners ---
+
+        // Color picker input event (updates current color info, but NOT recent history)
+        if (colorPicker) { // Added null check
+            colorPicker.addEventListener('input', (event) => {
+                updateColorInfo(event.target.value);
+            });
+
+            // Color picker change event (updates recent history ONLY when selection is finalized)
+            colorPicker.addEventListener('change', (event) => {
+                addRecentColor(event.target.value);
+            });
+        }
+
+        // Copy HEX button
+        if (copyHexBtn) { // Added null check
+            copyHexBtn.addEventListener('click', () => {
+                if (hexCodeElem) { // Added null check
+                    copyToClipboard(hexCodeElem.textContent.replace('HEX: ', ''));
+                }
+            });
+        }
+
+        // Copy RGB button
+        if (copyRgbBtn) { // Added null check
+            copyRgbBtn.addEventListener('click', () => {
+                if (rgbCodeElem) { // Added null check
+                    copyToClipboard(rgbCodeElem.textContent.replace('RGB: ', ''));
+                }
+            });
+        }
+
+        // Save Color Button
+        if (saveColorBtn && colorPicker && rgbCodeElem) { // Added null checks for all dependent elements
+            saveColorBtn.addEventListener('click', () => {
+                const currentHex = colorPicker.value.toUpperCase(); 
+                const currentRgb = rgbCodeElem.textContent.replace('RGB: ', '');
+
+                // Prevent saving duplicate colors
+                const isDuplicate = savedColors.some(color => color.hex.toUpperCase() === currentHex);
+                if (isDuplicate) {
+                    showTemporaryMessage('¡Este color ya está guardado!', 'error');
+                    return; 
+                }
+
+                const newColor = {
+                    id: Date.now(), 
+                    hex: currentHex,
+                    rgb: currentRgb
+                };
+                savedColors.push(newColor);
+                updateSavedColorsList();
+                showTemporaryMessage('¡Color guardado!');
+                successSound.play(); // Play success sound on save
+            });
+        }
+
+        // Event delegation for buttons in saved colors (Copy, Download, Delete)
+        if (savedColorsList) { // Added null check
+            savedColorsList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('copy-saved-btn')) {
+                    const hexToCopy = event.target.dataset.hex;
+                    copyToClipboard(hexToCopy);
+                } else if (event.target.classList.contains('download-saved-btn')) {
+                    const hexToDownload = event.target.dataset.hex;
+                    const rgbToDownload = event.target.dataset.rgb;
+                    downloadColorImage(hexToDownload, rgbToDownload);
+                } 
+                else if (event.target.classList.contains('delete-saved-btn')) {
+                    const idToDelete = parseInt(event.target.dataset.id);
+                    const cardToDelete = document.getElementById(`saved-color-${idToDelete}`);
+
+                    if (cardToDelete) {
+                        cardToDelete.classList.add('removing'); // Añade la clase de animación
+                        // Espera a que la animación termine antes de eliminar el elemento del DOM y del array
+                        cardToDelete.addEventListener('transitionend', () => {
+                            savedColors = savedColors.filter(color => color.id !== idToDelete);
+                            updateSavedColorsList(); // Esto volverá a renderizar la lista sin el color eliminado
+                            showTemporaryMessage('Color eliminado.');
+                            deleteSound.play(); // Play delete sound on delete
+                        }, { once: true }); // Asegura que el evento se dispare solo una vez
+                    }
+                }
+            });
+        }
+
+        // Event delegation for clicking on color scheme cards to select the color
+        if (mainColorSchemesContainer && colorPicker) { // Added null checks
+            mainColorSchemesContainer.addEventListener('click', (event) => { // Corrected typo here
+                let targetCard = event.target.closest('.color-card-item');
+                if (targetCard && targetCard.dataset.colorValue) {
+                    const newColor = targetCard.dataset.colorValue;
+                    // If it's an RGBA, convert to HEX for the picker (picker only takes HEX)
+                    if (newColor.startsWith('rgba')) {
+                        const rgbMatch = /rgba\((\d+),\s*(\d+),\s*(\d+)/.exec(newColor);
+                        if (rgbMatch) {
+                            const r = parseInt(rgbMatch[1]);
+                            const g = parseInt(rgbMatch[2]);
+                            const b = parseInt(rgbMatch[3]);
+                            colorPicker.value = rgbToHex(r, g, b);
+                        }
+                    } else {
+                        colorPicker.value = newColor;
+                    }
+                    updateColorInfo(colorPicker.value);
+                    addRecentColor(colorPicker.value); // Add to recent history on click
+                    // Añade la animación "pop" al hacer clic
+                    targetCard.classList.add('clicked');
+                    targetCard.addEventListener('animationend', () => {
+                        targetCard.classList.remove('clicked');
+                    }, { once: true });
+                    clickSound.play(); // Play click sound
+                }
+            });
+        }
+
+        if (tonesAndOpacitiesContainer && colorPicker) { // Added null checks
+            tonesAndOpacitiesContainer.addEventListener('click', (event) => {
+                let targetCard = event.target.closest('.color-card-item');
+                if (targetCard && targetCard.dataset.colorValue) {
+                    const newColor = targetCard.dataset.colorValue;
+                    // If it's an RGBA, convert to HEX for the picker (picker only takes HEX)
+                    if (newColor.startsWith('rgba')) {
+                        const rgbMatch = /rgba\((\d+),\s*(\d+),\s*(\d+)/.exec(newColor);
+                        if (rgbMatch) {
+                            const r = parseInt(rgbMatch[1]);
+                            const g = parseInt(rgbMatch[2]);
+                            const b = parseInt(rgbMatch[3]);
+                            colorPicker.value = rgbToHex(r, g, b);
+                        }
+                    } else {
+                        colorPicker.value = newColor;
+                    }
+                    updateColorInfo(colorPicker.value);
+                    addRecentColor(colorPicker.value); // Add to recent history on click
+                    // Añade la animación "pop" al hacer clic
+                    targetCard.classList.add('clicked');
+                    targetCard.addEventListener('animationend', () => {
+                        targetCard.classList.remove('clicked');
+                    }, { once: true });
+                    clickSound.play(); // Play click sound
+                }
+            });
+        }
+
+        // Event delegation for clicking on individual color swatches within predefined palette cards
+        if (premadePalettesContainer && colorPicker) { // Added null checks
+            premadePalettesContainer.addEventListener('click', (event) => {
+                let targetSwatch = event.target.closest('.palette-swatch-item');
+                if (targetSwatch && targetSwatch.dataset.colorValue) {
+                    const newColor = targetSwatch.dataset.colorValue;
+                    colorPicker.value = newColor; // Set the clicked color as the new current color
+                    updateColorInfo(newColor); // Update all UI elements based on the new color
+                    addRecentColor(newColor); // Add to recent history on click
+                    showTemporaryMessage(`¡Color de paleta seleccionado: ${newColor.toUpperCase()}!`);
+                    // Asegúrate de que el evento se dispare solo una vez
+                    targetSwatch.classList.add('clicked');
+                    targetSwatch.removeEventListener('animationend', handleAnimationEnd); // Eliminar listener anterior si existe
+                    targetSwatch.addEventListener('animationend', handleAnimationEnd, { once: true });
+                    clickSound.play(); // Play click sound
+                }
+            });
+        }
+
+        // Function to handle animation end, ensures it only runs once
+        function handleAnimationEnd(event) {
+            event.target.classList.remove('clicked');
+        }
+
+
+        // Event delegation for clicking on recent color swatches
+        if (recentColorsContainer && colorPicker) { // Added null checks
+            recentColorsContainer.addEventListener('click', (event) => {
+                let targetSwatch = event.target.closest('.recent-color-swatch');
+                if (targetSwatch && targetSwatch.dataset.colorValue) {
+                    const newColor = targetSwatch.dataset.colorValue;
+                    colorPicker.value = newColor;
+                    updateColorInfo(newColor);
+                    addRecentColor(newColor); // Add to recent history on click (to bring to front)
+                    showTemporaryMessage(`¡Color de historial seleccionado: ${newColor.toUpperCase()}!`);
+                    targetSwatch.classList.add('clicked');
+                    targetSwatch.addEventListener('animationend', () => {
+                        targetSwatch.classList.remove('clicked');
+                    }, { once: true });
+                    clickSound.play(); // Play click sound
+                }
+            });
+        }
+
+        // Event delegation for clicking on color grid swatches
+        if (colorGridContainer && colorPicker) { // Added null checks
+            colorGridContainer.addEventListener('click', (event) => {
+                let targetSwatch = event.target.closest('.grid-color-swatch');
+                if (targetSwatch && targetSwatch.dataset.colorValue) {
+                    const newColor = targetSwatch.dataset.colorValue;
+                    colorPicker.value = newColor;
+                    updateColorInfo(newColor);
+                    addRecentColor(newColor); // Add to recent history on click
+                    showTemporaryMessage(`¡Color de la tabla seleccionado: ${newColor.toUpperCase()}!`);
+                    targetSwatch.classList.add('clicked');
+                    targetSwatch.addEventListener('animationend', () => {
+                        targetSwatch.classList.remove('clicked');
+                    }, { once: true });
+                    clickSound.play(); // Play click sound
+                }
+            });
+        }
+
+        // Dark Mode Toggle Event Listener
+        if (darkModeToggle) {
+            darkModeToggle.addEventListener('click', toggleDarkMode);
+        }
+
+        // --- Initialization on page load ---
+        window.onload = () => {
+            const savedDarkMode = localStorage.getItem('darkMode');
+            const gradientSection = document.getElementById('gradientSection');
+            if (gradientSection) {
+                if (savedDarkMode === 'enabled') {
+                    gradientSection.classList.remove('from-blue-50', 'to-purple-50');
+                    gradientSection.classList.add('from-gray-700', 'to-gray-900');
+                } else {
+                    gradientSection.classList.remove('from-gray-700', 'to-gray-900');
+                    gradientSection.classList.add('from-blue-50', 'to-purple-50');
+                }
+            }
+
+
+            // Null checks are important here as well.
+            if (colorPicker) { 
+                updateColorInfo(colorPicker.value); // Initialize with default color
+            }
+            updateSavedColorsList(); // Load saved colors from localStorage
+            premadePalettes.forEach(palette => renderPalette(palette)); // Render palettes
+            updateRecentColorsList(); // Load and render recent colors
+            generateColorGrid(); // Generate and render the color grid
+        };
+    </script>
+</body>
+</html>
